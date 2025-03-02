@@ -1,16 +1,84 @@
 use std::{
     borrow::Cow,
+    fs::File,
     io::{Read, Write},
     path::Path,
 };
 
 use furigana_gen::FuriganaGenerator;
 
+#[derive(Clone, Debug)]
+struct Args {
+    pitch_accent: bool,
+    furigana_exclude: Option<usize>,
+    learn_mode: bool,
+    word_stats: bool,
+    input_filepath: String,
+    output_filepath: String,
+}
+
+impl Args {
+    fn parse() -> Args {
+        use bpaf::{construct, long, positional, Parser};
+
+        let pitch_accent = long("pitch-accent")
+            .short('p')
+            .help("When adding furigana to a word, include a pitch accent marker when the accent is unambiguous. A curled marker indicates the accented mora, a flat marker indicates flat pitch (heiban).")
+            .switch();
+        let furigana_exclude = long("furigana-exclude")
+            .short('x')
+            .help("Don't add furigana to words made up of the first N most common kanji.")
+            .argument::<usize>("N")
+            .optional();
+        let learn_mode = long("learn-mode")
+            .short('l')
+            .help("Put furigana on words in a spaced-repitition style, so words that show up frequenly lose their furigana as the book goes on.")
+            .switch();
+        let word_stats = long("word-stats")
+            .short('s')
+            .help("When using learning mode, outputs a word stats file showing all the words parsed along with some statistics about them.")
+            .switch();
+        let input_filepath =
+            positional::<String>("IN_EPUB_FILE").help("Path to the input epub file.");
+        let output_filepath =
+            positional::<String>("OUT_EPUB_FILE").help("Path to write the processed epub file to.");
+
+        construct!(Args {
+            pitch_accent,
+            furigana_exclude,
+            learn_mode,
+            word_stats,
+            input_filepath,
+            output_filepath
+        })
+        .to_options()
+        .run()
+    }
+
+    /// Returns true if all is good, false if there's a problem.
+    ///
+    /// Prints its own error messages if there's a problem.
+    fn validate(&self) -> bool {
+        if self.word_stats && !self.learn_mode {
+            println!("Error: outputting word stats requires learn mode to be enabled.");
+            return false;
+        }
+
+        // So far we don't need any custom validation.
+        return true;
+    }
+}
+
 fn main() {
+    let args = Args::parse();
+    if !args.validate() {
+        return;
+    }
+
+    // Load input file.
     let content = {
-        let in_filename = std::env::args().nth(1).unwrap();
         let mut in_archive =
-            zip::ZipArchive::new(std::fs::File::open(in_filename).unwrap()).unwrap();
+            zip::ZipArchive::new(std::fs::File::open(&args.input_filepath).unwrap()).unwrap();
 
         let mut content = Vec::new();
         for i in 0..in_archive.len() {
@@ -42,8 +110,14 @@ fn main() {
         content
     };
 
-    let out_filename = std::env::args().nth(2).unwrap();
-    let mut out_archive = zip::ZipWriter::new(std::fs::File::create(out_filename).unwrap());
+    // Open output file.
+    let mut out_archive =
+        zip::ZipWriter::new(std::fs::File::create(&args.output_filepath).unwrap());
+
+    // Prepare furigana generator.
+    let furigen =
+        FuriganaGenerator::new(args.furigana_exclude.unwrap_or(0), true, args.pitch_accent);
+    let mut session = furigen.new_session(args.learn_mode);
 
     // Write mimetype file first, uncompressed.
     out_archive
@@ -55,10 +129,7 @@ fn main() {
         .unwrap();
     out_archive.write_all(b"application/epub+zip").unwrap();
 
-    let furigen = FuriganaGenerator::new(10, true, true);
-    let mut session = furigen.new_session(true);
-
-    // Then write the other files.
+    // Then write the other files, processing to add furigana as appropriate.
     for (path, data) in &content {
         println!("Writing {}", path.display());
 
@@ -116,4 +187,23 @@ rt span.pitch_flat {
     }
 
     out_archive.finish().unwrap();
+
+    // Save word stats to a text file.
+    if args.word_stats {
+        // Output filename.
+        let filename: String = format!("{}.word_stats.txt", args.output_filepath);
+
+        let (total_words, stats) = session.word_stats();
+
+        let mut f = File::create(&filename).unwrap();
+        write!(&mut f, "Text length in words: {}\n\n", total_words).unwrap();
+        for (word, max_distance, times_seen) in stats.iter() {
+            write!(
+                &mut f,
+                "{}        distance {} | seen {}\n",
+                word, max_distance, times_seen
+            )
+            .unwrap();
+        }
+    }
 }

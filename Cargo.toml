@@ -6,5 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bpaf = "0.9.17"
 zip = "2.2.0"
 furigana_gen = { git = "https://github.com/cessen/furigana_gen.git", branch = "main" }

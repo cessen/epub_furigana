@@ -142,6 +142,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bpaf"
+version = "0.9.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd343f000c4472dc4557e093f314c5210375d3e9349ad866fee0ddb7f4ed10bf"
+
+[[package]]
 name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -351,6 +357,7 @@ dependencies = [
 name = "epub_furigana"
 version = "0.1.0"
 dependencies = [
+ "bpaf",
  "furigana_gen",
  "zip",
 ]
