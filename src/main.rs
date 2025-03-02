@@ -64,7 +64,6 @@ impl Args {
             return false;
         }
 
-        // So far we don't need any custom validation.
         return true;
     }
 }
