@@ -7,6 +7,15 @@ use std::{
 
 use furigana_gen::FuriganaGenerator;
 
+const CSS: &str = r#"
+ruby.pitch_accent > rt {
+    color: #c0c0c0;
+}
+ruby.pitch_flat > rt {
+    color: #c0c0c0;
+}
+"#;
+
 #[derive(Clone, Debug)]
 struct Args {
     pitch_accent: bool,
@@ -144,30 +153,7 @@ fn main() {
             }
         } else if path_str.ends_with(".css") {
             if let Ok(text) = std::str::from_utf8(data) {
-                Cow::Owned(
-                    (text.to_string()
-                        + r#"
-span.pitch_accent {
-    display: inline-block;
-    padding-right: 0.15em;
-    border-right: solid 0.12rem #c0c0c0;
-    border-bottom-right-radius: 0.5em;
-}
-rt span.pitch_accent {
-    padding-right: 0.1em;
-}
-
-span.pitch_flat {
-    display: inline-block;
-    padding-right: 0.15em;
-    border-right: solid 0.075rem #c0c0c0;
-}
-rt span.pitch_flat {
-    padding-right: 0.1em;
-}
-"#)
-                    .into_bytes(),
-                )
+                Cow::Owned((text.to_string() + CSS).into_bytes())
             } else {
                 Cow::Borrowed(data)
             }
