@@ -7,7 +7,7 @@ Since the furigana is generated, it is of course not perfect.  Its most frequent
 In addition to simple furigana generation, EPUB Furigana also has the following optional features:
 
 - A "learn mode" that generates furigana in a spaced-repetition manner, where words that appear frequently in the book slowly show their furigana less and less.
-- Adding pitch accent markings to furigana-ized words. A `＊` mark indicates the accented character, and a `o` mark on the last character indicates flat (heiban) pitch.  (The use of a `o` mark rather than no mark to indicate flat pitch is to distinguish it from no indication of pitch accent at all, such as when the pitch accent is unknown, ambiguous, or when words are conjugated, which isn't handled.)
+- Adding pitch accent markings to furigana-ized words. A `＊` mark indicates the accented character, and a `口` mark on the last character indicates flat (heiban) pitch.  (The use of a `口` mark rather than no mark to indicate flat pitch is to distinguish it from no indication of pitch accent at all, such as when the pitch accent is unknown, ambiguous, or when words are conjugated, which isn't handled.)
 
 
 ## Building

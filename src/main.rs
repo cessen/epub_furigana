@@ -123,8 +123,20 @@ fn main() {
         zip::ZipWriter::new(std::fs::File::create(&args.output_filepath).unwrap());
 
     // Prepare furigana generator.
-    let furigen =
-        FuriganaGenerator::new(args.furigana_exclude.unwrap_or(0), true, args.pitch_accent);
+    let furigen = FuriganaGenerator::new(
+        args.furigana_exclude.unwrap_or(0),
+        true,
+        if args.pitch_accent {
+            Some("＊".into())
+        } else {
+            None
+        },
+        if args.pitch_accent {
+            Some("口".into())
+        } else {
+            None
+        },
+    );
     let mut session = furigen.new_session(args.learn_mode);
 
     // Write mimetype file first, uncompressed.
