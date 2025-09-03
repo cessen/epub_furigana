@@ -20,6 +20,7 @@ ruby.pitch_flat > rt {
 struct Args {
     pitch_accent: bool,
     furigana_exclude: Option<usize>,
+    known_words: Option<String>,
     learn_mode: bool,
     word_stats: bool,
     input_filepath: String,
@@ -39,6 +40,11 @@ impl Args {
             .help("Don't add furigana to words made up of the first N most common kanji.")
             .argument::<usize>("N")
             .optional();
+        let known_words = long("known-words")
+            .short('k')
+            .help("Don't add furigana to words in this text file.")
+            .argument::<String>("FILE")
+            .optional();
         let learn_mode = long("learn-mode")
             .short('l')
             .help("Put furigana on words in a spaced-repitition style, so words that show up frequenly lose their furigana as the book goes on.")
@@ -55,6 +61,7 @@ impl Args {
         construct!(Args {
             pitch_accent,
             furigana_exclude,
+            known_words,
             learn_mode,
             word_stats,
             input_filepath,
@@ -82,6 +89,15 @@ fn main() {
     if !args.validate() {
         return;
     }
+
+    // Load known word list if given.
+    let known_words_text = if let Some(known_words_path) = args.known_words {
+        // TODO: error on file not accessible, etc.
+        std::fs::read_to_string(known_words_path).unwrap_or_else(|_| "".into())
+    } else {
+        "".into()
+    };
+    let known_words: Vec<&str> = known_words_text.split(char::is_whitespace).collect();
 
     // Load input file.
     let content = {
@@ -125,6 +141,7 @@ fn main() {
     // Prepare furigana generator.
     let furigen = FuriganaGenerator::new(
         args.furigana_exclude.unwrap_or(0),
+        &known_words,
         true,
         if args.pitch_accent {
             Some("＊".into())
