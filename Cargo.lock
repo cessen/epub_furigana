@@ -412,7 +412,7 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 [[package]]
 name = "furigana_gen"
 version = "0.1.0"
-source = "git+https://github.com/cessen/furigana_gen.git?branch=main#40ed2fd95546f9e7b405fa71d340a1e305fddca9"
+source = "git+https://github.com/cessen/furigana_gen.git?branch=main#b60ecc38b3c4eba03850694f936e137846ad5903"
 dependencies = [
  "fnv",
  "lz4_flex",
