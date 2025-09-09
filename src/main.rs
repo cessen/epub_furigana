@@ -19,7 +19,7 @@ ruby.pitch_flat > rt {
 #[derive(Clone, Debug)]
 struct Args {
     pitch_accent: bool,
-    furigana_exclude: Option<usize>,
+    known_kanji: Option<String>,
     known_words: Option<String>,
     learn_mode: bool,
     word_stats: bool,
@@ -35,14 +35,14 @@ impl Args {
             .short('p')
             .help("When adding furigana to a word, include a pitch accent marker when the accent is unambiguous. A curled marker indicates the accented mora, a flat marker indicates flat pitch (heiban).")
             .switch();
-        let furigana_exclude = long("furigana-exclude")
-            .short('x')
-            .help("Don't add furigana to words made up of the first N most common kanji.")
-            .argument::<usize>("N")
-            .optional();
         let known_words = long("known-words")
-            .short('k')
+            .short('w')
             .help("Don't add furigana to words in this text file.")
+            .argument::<String>("FILE")
+            .optional();
+        let known_kanji = long("known-kanji")
+            .short('k')
+            .help("Don't add furigana to words whose kanji are all in this text file.")
             .argument::<String>("FILE")
             .optional();
         let learn_mode = long("learn-mode")
@@ -60,7 +60,7 @@ impl Args {
 
         construct!(Args {
             pitch_accent,
-            furigana_exclude,
+            known_kanji,
             known_words,
             learn_mode,
             word_stats,
@@ -89,6 +89,15 @@ fn main() {
     if !args.validate() {
         return;
     }
+
+    // Load known kanji list if given.
+    let known_kanji_text = if let Some(known_kanji_path) = args.known_kanji {
+        // TODO: error on file not accessible, etc.
+        std::fs::read_to_string(known_kanji_path).unwrap_or_else(|_| "".into())
+    } else {
+        "".into()
+    };
+    let known_kanji: Vec<char> = known_kanji_text.chars().collect();
 
     // Load known word list if given.
     let known_words_text = if let Some(known_words_path) = args.known_words {
@@ -140,7 +149,7 @@ fn main() {
 
     // Prepare furigana generator.
     let furigen = FuriganaGenerator::new(
-        args.furigana_exclude.unwrap_or(0),
+        &known_kanji,
         &known_words,
         true,
         if args.pitch_accent {
