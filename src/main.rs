@@ -9,10 +9,12 @@ use furigana_gen::FuriganaGenerator;
 
 const CSS: &str = r#"
 ruby.pitch_accent > rt {
-    color: #c0c0c0;
+    font-size: 0.25rem;
+    color: #808080;
 }
 ruby.pitch_flat > rt {
-    color: #c0c0c0;
+    font-size: 0.25rem;
+    color: #808080;
 }
 "#;
 
@@ -158,7 +160,7 @@ fn main() {
             None
         },
         if args.pitch_accent {
-            Some("口".into())
+            Some("━".into())
         } else {
             None
         },
