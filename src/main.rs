@@ -18,6 +18,48 @@ ruby.pitch_flat > rt {
 }
 "#;
 
+/// List of basic grammar-esk or exclamation words, that shouldn't
+/// be included in the word stats printed at the end.
+const BASIC_WORDS: &[&str] = &[
+    "ない",
+    "って",
+    "です",
+    "なっ",
+    "ます",
+    "する",
+    "ある",
+    "たら",
+    "てる",
+    "なる",
+    "さん",
+    "よう",
+    "いる",
+    "でも",
+    "じゃ",
+    "えっ",
+    "くれ",
+    "こと",
+    "とか",
+    "たい",
+    "だっ",
+    "あっ",
+    "なぁ",
+    "れる",
+    "だって",
+    "いく",
+    "という",
+    "くる",
+    "なく",
+    "ねぇ",
+    "やっ",
+    "おい",
+    "いっ",
+    "なり",
+    "っと",
+    "おく",
+    "られ",
+];
+
 #[derive(Clone, Debug)]
 struct Args {
     pitch_accent: bool,
@@ -222,7 +264,21 @@ fn main() {
 
         let mut f = File::create(&filename).unwrap();
         write!(&mut f, "Text length in words: {}\n\n", total_words).unwrap();
+        let mut omitted_words = 0;
+        let mut omitted_seen = 0;
         for (word, max_distance, times_seen) in stats.iter() {
+            let c = word.chars().next().unwrap();
+            if (word.chars().count() == 1 && ((c as u32) < 0x4e00 || (c as u32) > 0x9faf))
+                || BASIC_WORDS.contains(&&word[..])
+            {
+                // We skip "words" that are single-character and aren't
+                // kanji, or are part of a list of basic grammar-esk words.
+                // This gets rid of punctuation, single-character hiragana,
+                // etc.
+                omitted_words += 1;
+                omitted_seen += times_seen;
+                continue;
+            }
             write!(
                 &mut f,
                 "{}        distance {} | seen {}\n",
@@ -230,5 +286,11 @@ fn main() {
             )
             .unwrap();
         }
+        write!(
+            &mut f,
+            "\nOmitted (punctuation, single hiragana, etc.):   words {} | seen {}\n",
+            omitted_words, omitted_seen
+        )
+        .unwrap();
     }
 }
