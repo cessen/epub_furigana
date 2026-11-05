@@ -67,8 +67,9 @@ struct Args {
     known_words: Option<String>,
     learn_mode: bool,
     word_stats: bool,
-    input_filepath: String,
-    output_filepath: String,
+    input_sentence: Option<String>,
+    input_filepath: Option<String>,
+    output_filepath: Option<String>,
 }
 
 impl Args {
@@ -97,10 +98,16 @@ impl Args {
             .short('s')
             .help("When using learning mode, outputs a word stats file showing all the words parsed along with some statistics about them.")
             .switch();
-        let input_filepath =
-            positional::<String>("IN_EPUB_FILE").help("Path to the input epub file.");
-        let output_filepath =
-            positional::<String>("OUT_EPUB_FILE").help("Path to write the processed epub file to.");
+        let input_sentence = long("input_sentence")
+            .short('i')
+            .argument::<String>("SENTENCE")
+            .optional();
+        let input_filepath = positional::<String>("IN_EPUB_FILE")
+            .help("Path to the input epub file.")
+            .optional();
+        let output_filepath = positional::<String>("OUT_EPUB_FILE")
+            .help("Path to write the processed epub file to.")
+            .optional();
 
         construct!(Args {
             pitch_accent,
@@ -108,6 +115,7 @@ impl Args {
             known_words,
             learn_mode,
             word_stats,
+            input_sentence,
             input_filepath,
             output_filepath
         })
@@ -121,6 +129,19 @@ impl Args {
     fn validate(&self) -> bool {
         if self.word_stats && !self.learn_mode {
             println!("Error: outputting word stats requires learn mode to be enabled.");
+            return false;
+        }
+
+        if self.input_sentence.is_some() {
+            if self.input_filepath.is_some() || self.output_filepath.is_some() {
+                println!("Error: cannot specify both an input sentence and an input/output file.");
+                return false;
+            }
+            return true;
+        }
+
+        if self.input_filepath.is_none() || self.output_filepath.is_none() {
+            println!("Error: both an input and output file are required (unless you use -i).");
             return false;
         }
 
@@ -152,10 +173,38 @@ fn main() {
     };
     let known_words: Vec<&str> = known_words_text.split(char::is_whitespace).collect();
 
+    // Prepare furigana generator.
+    let furigen = FuriganaGenerator::new(
+        &known_kanji,
+        &known_words,
+        true,
+        if args.pitch_accent {
+            Some("＊".into())
+        } else {
+            None
+        },
+        if args.pitch_accent {
+            Some("━".into())
+        } else {
+            None
+        },
+    );
+    let mut session = furigen.new_session(args.learn_mode);
+
+    // We're doing the input sentence, not an epub.
+    if let Some(sentence) = args.input_sentence {
+        println!("{}", session.add_html_furigana(&sentence));
+        return;
+    }
+
+    // We're doing an epub.
+    let input_filepath = args.input_filepath.unwrap();
+    let output_filepath = args.output_filepath.unwrap();
+
     // Load input file.
     let content = {
         let mut in_archive =
-            zip::ZipArchive::new(std::fs::File::open(&args.input_filepath).unwrap()).unwrap();
+            zip::ZipArchive::new(std::fs::File::open(&input_filepath).unwrap()).unwrap();
 
         let mut content = Vec::new();
         for i in 0..in_archive.len() {
@@ -188,26 +237,7 @@ fn main() {
     };
 
     // Open output file.
-    let mut out_archive =
-        zip::ZipWriter::new(std::fs::File::create(&args.output_filepath).unwrap());
-
-    // Prepare furigana generator.
-    let furigen = FuriganaGenerator::new(
-        &known_kanji,
-        &known_words,
-        true,
-        if args.pitch_accent {
-            Some("＊".into())
-        } else {
-            None
-        },
-        if args.pitch_accent {
-            Some("━".into())
-        } else {
-            None
-        },
-    );
-    let mut session = furigen.new_session(args.learn_mode);
+    let mut out_archive = zip::ZipWriter::new(std::fs::File::create(&output_filepath).unwrap());
 
     // Write mimetype file first, uncompressed.
     out_archive
@@ -258,7 +288,7 @@ fn main() {
     // Save word stats to a text file.
     if args.word_stats {
         // Output filename.
-        let filename: String = format!("{}.word_stats.txt", args.output_filepath);
+        let filename: String = format!("{}.word_stats.txt", &output_filepath);
 
         let (total_words, stats) = session.word_stats();
 
